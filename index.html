@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Date Filter</title>
+        
+        <script src="js/papaparse.min.js"></script>
+        <script src="js/luxon.min.js"></script>
+        <script src="js/tidy.min.js"></script>
+
+        <style>
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+                padding: 0 10px;
+            }
+
+            button {
+                background-color: lightgray;
+                padding: 10px;
+            }
+
+            h1 {
+                margin-bottom: 0;
+            }
+
+            label {
+                font-weight: bold;
+            }
+
+            #description {
+                margin: 5px 0px 30px 0px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Date Filter</h1>
+        <p id="description">Filter REDCap output to a specified date range.</p>
+        <form name="date-filter-form">
+            <div>
+                <p>
+                    <label for="csv-select">CSV File:</label>
+                    <input type="file" id="csv-select">
+                </p>
+                <p>
+                    <label for="start-date">Start Date:</label>
+                    <input type="date" id="start-date">
+                </p>
+                <p>
+                    <label for="end-date">End Date (optional):</label>
+                    <input type="date" id="end-date">
+                </p>
+            </div>
+            <button type="button" id="submit-button">Submit</button>
+        </form>
+
+        <div id="returned-file"></div>
+
+        <script>
+            const startDate = document.getElementById("start-date");
+            const endDate = document.getElementById("end-date");
+            const uploadDocument = document.getElementById("csv-select");
+            const submitButton = document.getElementById("submit-button");
+
+            submitButton.addEventListener(
+                'click',
+                () => {
+                    const startDateParsed = luxon.DateTime.fromFormat(startDate.value, "yyyy-M-d");
+                    let endDateParsed = luxon.DateTime.now();
+                    if (endDate.value != "") {
+                        endDateParsed = luxon.DateTime.fromFormat(endDate.value, "yyyy-M-d");
+                    }
+
+                    if (uploadDocument.files.length == 0) {
+                        alert("Must specify CSV file");
+                    } else if (startDate.value == "") {
+                        alert("Must specify start date");
+                    } else if (endDateParsed < startDateParsed) {
+                        alert("End date must be after start date");
+                    } else {
+                        const csvFile = uploadDocument.files[0];
+                        const parsed = Papa.parse(csvFile, {
+                            header: true,
+                            error: error => console.log(error),
+                            complete: parsed => {
+                                const filteredJsonData = parsed.data
+                                    .filter(row => row["Record ID"] != "")
+                                    .map(row => ({
+                                        ...row,
+                                        date: luxon.DateTime.fromFormat(row["Survey Timestamp"], "yyyy-M-d H:m:s"),
+                                    }))
+                                    .filter(row => row.date > startDateParsed && row.date <= endDateParsed)
+
+                                const unparsed = Papa.unparse({
+                                    data: filteredJsonData,
+                                    fields: parsed.meta.fields
+                                });
+
+                                const filteredFile = new File([unparsed], `filtered-${csvFile.name}`, { type: "text/plain" });
+                                const fileUrl = window.URL.createObjectURL(filteredFile);
+
+                                const downloadLink = document.createElement("a");
+                                downloadLink.href = fileUrl;
+                                downloadLink.text = "Download";
+                                downloadLink.download = `filtered-${csvFile.name}`;
+
+                                const returnedFileZone = document.getElementById('returned-file');
+                                returnedFileZone.innerHTML = "";
+                                returnedFileZone.appendChild(downloadLink);
+                            }
+                        });
+                    }
+                });
+        </script>
+    </body>
+</html>
