@@ -30,6 +30,13 @@
             #description {
                 margin: 5px 0px 30px 0px;
             }
+
+            #returned-file {
+                background-color: white;
+                padding: 5px;
+                transition: background-color 1000ms;
+                width: fit-content;
+            }
         </style>
     </head>
     <body>
@@ -67,7 +74,7 @@
                     const startDateParsed = luxon.DateTime.fromFormat(startDate.value, "yyyy-M-d");
                     let endDateParsed = luxon.DateTime.now();
                     if (endDate.value != "") {
-                        endDateParsed = luxon.DateTime.fromFormat(endDate.value, "yyyy-M-d");
+                        endDateParsed = luxon.DateTime.fromFormat(endDate.value, "yyyy-M-d").plus({ days: 1 });
                     }
 
                     if (uploadDocument.files.length == 0) {
@@ -82,13 +89,16 @@
                             header: true,
                             error: error => console.log(error),
                             complete: parsed => {
+                                const recordIdField = parsed.meta.fields.includes("Record ID") ? "Record ID" : "record_id";
+                                const timestampField = parsed.meta.fields.includes("Survey Timestamp") ? "Survey Timestamp" : "contact_timestamp";
+
                                 const filteredJsonData = parsed.data
-                                    .filter(row => row["Record ID"] != "")
+                                    .filter(row => row[recordIdField] != "")
                                     .map(row => ({
                                         ...row,
-                                        date: luxon.DateTime.fromFormat(row["Survey Timestamp"], "yyyy-M-d H:m:s"),
+                                        date: luxon.DateTime.fromFormat(row[timestampField], "yyyy-M-d H:m:s"),
                                     }))
-                                    .filter(row => row.date > startDateParsed && row.date <= endDateParsed)
+                                    .filter(row => row.date > startDateParsed && row.date < endDateParsed)
 
                                 const unparsed = Papa.unparse({
                                     data: filteredJsonData,
@@ -106,6 +116,10 @@
                                 const returnedFileZone = document.getElementById('returned-file');
                                 returnedFileZone.innerHTML = "";
                                 returnedFileZone.appendChild(downloadLink);
+                                returnedFileZone.style.backgroundColor = "#eff53d";
+                                setTimeout(() => {
+                                    returnedFileZone.style.backgroundColor = "white";
+                                }, 1000);
                             }
                         });
                     }
