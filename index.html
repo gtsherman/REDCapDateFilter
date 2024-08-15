@@ -46,7 +46,7 @@
             <div>
                 <p>
                     <label for="csv-select">CSV File:</label>
-                    <input type="file" id="csv-select">
+                    <input type="file" accept=".csv" id="csv-select">
                 </p>
                 <p>
                     <label for="start-date">Start Date:</label>
@@ -89,8 +89,8 @@
                             header: true,
                             error: error => console.log(error),
                             complete: parsed => {
-                                const recordIdField = parsed.meta.fields.includes("Record ID") ? "Record ID" : "record_id";
-                                const timestampField = parsed.meta.fields.includes("Survey Timestamp") ? "Survey Timestamp" : "contact_timestamp";
+                                const recordIdField = parsed.meta.fields[0];
+                                const timestampField = parsed.meta.fields[2];
 
                                 const filteredJsonData = parsed.data
                                     .filter(row => row[recordIdField] != "")
